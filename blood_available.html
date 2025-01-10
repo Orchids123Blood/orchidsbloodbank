@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetch Blood Availability</title>
+    <style>
+        table {
+            width: 50%;
+            margin: auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align:center;">Fetch Blood Availability</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Blood Group</th>
+                <th>Available Bottles</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="bloodTable">
+            <!-- Data will be inserted here dynamically -->
+        </tbody>
+    </table>
+
+    <script>
+        // Adafruit IO credentials and URL
+        const AIO_KEY = "aio_QAQq13FMGdyJ0nNZheXsB3yI7s8E";
+        const FEED_URL = "https://io.adafruit.com/api/v2/Wifi_projects/feeds/a-pos/data";
+
+        // Function to fetch the current bottle count from Adafruit IO
+        async function fetchData() {
+            try {
+                const response = await fetch(`${FEED_URL}?X-AIO-Key=${AIO_KEY}`);
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status} ${response.statusText}`);
+                }
+                const data = await response.json();
+                const latestValue = data[0].value;  // Get the latest value from the feed
+                updateTable(latestValue);
+            } catch (error) {
+                console.error("Error fetching data from Adafruit IO:", error);
+                alert("Failed to fetch data. Please check your Adafruit feed and credentials.");
+            }
+        }
+
+        // Update the table with fetched data
+        function updateTable(bottleCount) {
+            document.getElementById("bloodTable").innerHTML = `
+                <tr>
+                    <td>A_Pos</td>
+                    <td id="bottleCount">${bottleCount}</td>
+                    <td><button onclick="bookBottle()">Book Now</button></td>
+                </tr>
+            `;
+        }
+
+        // Function to book a bottle and update Adafruit IO
+        async function bookBottle() {
+            let currentCount = parseInt(document.getElementById("bottleCount").textContent);
+            
+            if (currentCount > 0) {
+                const newCount = currentCount - 1;
+
+                // Update the table immediately for user feedback
+                document.getElementById("bottleCount").textContent = newCount;
+
+                // Send updated count to Adafruit IO
+                try {
+                    const response = await fetch(FEED_URL, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-AIO-Key": AIO_KEY
+                        },
+                        body: JSON.stringify({ value: newCount })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Error: ${response.status} ${response.statusText}`);
+                    }
+
+                    alert("Bottle booked successfully!");
+                } catch (error) {
+                    console.error("Error updating data on Adafruit IO:", error);
+                    alert("Failed to update data on Adafruit IO.");
+                }
+            } else {
+                alert("No bottles available to book.");
+            }
+        }
+
+        // Fetch data when the page loads
+        fetchData();
+    </script>
+</body>
+</html>
